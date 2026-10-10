@@ -223,11 +223,48 @@ _LAB_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_SKIP_LINES = {
-    'patient', 'dob', 'gender', 'age', 'date', 'ref. no',
-    'ordering', 'physician', 'test', 'result', 'reference',
-    'units', 'flag', 'recommended',
-}
+# ─────────────────────────────────────────────
+# Flexible fallback parsing (single-space, colon, "Below X" ranges)
+# ─────────────────────────────────────────────
+
+_NUM = r"\d+(?:\.\d+)?"
+
+_FLEX_PATTERN = re.compile(
+    rf"^(?P<test>[A-Za-z][A-Za-z0-9 ()/\-]{{1,45}}?)"
+    rf"\s*[:=]?\s+"
+    rf"(?P<value>{_NUM})"
+    rf"(?:\s+(?P<ref>{_NUM}\s*-\s*{_NUM}|(?:below|above|<=?|>=?)\s*{_NUM}))?"
+    rf"(?:\s*(?P<unit>(?:10\^\d+/)?[A-Za-zµ%][A-Za-zµ%0-9/.^\-]*))?"
+    rf"(?:\s+\[?(?P<flag>LOW|HIGH|NORMAL|ABNORMAL|CRITICAL)\]?)?",
+    re.IGNORECASE,
+)
+
+# Lines starting with these are header/metadata, not lab results
+_SKIP_START = re.compile(
+    r"^(patient|dob|gender|sex|age|date|ref\.?\s*no|ordering|physician|"
+    r"test|result|reference|units|flag|recommended)\b",
+    re.IGNORECASE,
+)
+
+# Guards the flexible parser against prose like "repeat CBC after 3 months"
+_UNIT_HINT = re.compile(r"/|%|^(fl|pg|iu|miu|mg|g|ng|ug|mmol|u)$", re.IGNORECASE)
+
+
+def _parse_ref(ref: Optional[str]) -> tuple:
+    """'13.5 - 17.5' -> (13.5, 17.5); 'Below 200' -> (0.0, 200.0); 'Above 40' -> (40.0, 999999.0)."""
+    if not ref:
+        return None, None
+    r = ref.lower().strip()
+    nums = re.findall(_NUM, r)
+    if not nums:
+        return None, None
+    if r.startswith(("below", "<")):
+        return 0.0, float(nums[0])
+    if r.startswith(("above", ">")):
+        return float(nums[0]), 999999.0
+    if len(nums) >= 2:
+        return float(nums[0]), float(nums[1])
+    return None, None
 
 
 def extract_lab_values(text: str) -> List[Dict]:
@@ -236,18 +273,16 @@ def extract_lab_values(text: str) -> List[Dict]:
 
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or len(stripped) < 10:
+        if len(stripped) < 6 or _SKIP_START.match(stripped):
             continue
 
-        # Skip metadata/header lines
-        if any(skip in stripped.lower() for skip in _SKIP_LINES):
-            continue
-
-        # Must have multiple spaces (tabular format)
-        if '  ' not in stripped:
-            continue
-
-        m = _LAB_PATTERN.match(stripped)
+        # 1) strict multi-space tabular match, 2) flexible fallback
+        m, strict = None, False
+        if "  " in stripped:
+            m = _LAB_PATTERN.match(stripped)
+            strict = m is not None
+        if not m:
+            m = _FLEX_PATTERN.match(stripped)
         if not m:
             continue
 
@@ -255,19 +290,12 @@ def extract_lab_values(text: str) -> List[Dict]:
         value = m.group("value")
         unit = (m.group("unit") or "").strip()
         flag = (m.group("flag") or "").strip().upper() or None
+        ref_low, ref_high = _parse_ref(m.group("ref"))
 
-        # Parse reference range
-        ref_low, ref_high = None, None
-        ref_str = m.group("ref")
-        if ref_str:
-            parts = re.split(r'\s*-\s*', ref_str.strip())
-            try:
-                ref_low = float(parts[0])
-                ref_high = float(parts[1])
-            except (ValueError, IndexError):
-                pass
+        # Fallback matches must show another sign of being a lab line
+        if not strict and not (ref_low is not None or flag or _UNIT_HINT.search(unit)):
+            continue
 
-        # Skip if test name looks like metadata
         key = test_name.lower()
         if key in seen:
             continue
@@ -276,7 +304,7 @@ def extract_lab_values(text: str) -> List[Dict]:
         results.append({
             "test_name": test_name,
             "value": value,
-            "numeric_value": float(value) if value else None,
+            "numeric_value": float(value),
             "unit": unit,
             "ref_low": ref_low,
             "ref_high": ref_high,
