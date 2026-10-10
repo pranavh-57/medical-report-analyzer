@@ -7,7 +7,7 @@
       "female": { "low": 12.0, "high": 15.5, "critical_low": 7.0, "critical_high": 20.0 },
       "child":  { "low": 11.0, "high": 16.0, "critical_low": 7.0, "critical_high": 20.0 }
     },
-    "aliases": ["hgb", "hb"]
+    "aliases": ["hgb", "hb", "haemoglobin"]
   },
   "hematocrit": {
     "display_name": "Hematocrit",
@@ -16,7 +16,7 @@
       "male":   { "low": 41.0, "high": 53.0, "critical_low": 20.0, "critical_high": 60.0 },
       "female": { "low": 36.0, "high": 46.0, "critical_low": 20.0, "critical_high": 60.0 }
     },
-    "aliases": ["hct", "packed cell volume", "pcv"]
+    "aliases": ["hct", "packed cell volume", "pcv", "haematocrit"]
   },
   "wbc": {
     "display_name": "White Blood Cell Count",
@@ -41,7 +41,7 @@
     "ranges": {
       "default": { "low": 150.0, "high": 400.0, "critical_low": 50.0, "critical_high": 1000.0 }
     },
-    "aliases": ["thrombocytes", "plt"]
+    "aliases": ["thrombocytes", "plt", "platelet count"]
   },
   "glucose": {
     "display_name": "Blood Glucose (Fasting)",
@@ -49,7 +49,7 @@
     "ranges": {
       "default": { "low": 70.0, "high": 100.0, "critical_low": 40.0, "critical_high": 500.0 }
     },
-    "aliases": ["blood sugar", "fasting glucose", "fbs"]
+    "aliases": ["blood sugar", "fasting glucose", "fbs", "fasting blood glucose"]
   },
   "hba1c": {
     "display_name": "Hemoglobin A1c",
@@ -74,7 +74,7 @@
     "ranges": {
       "default": { "low": 7.0, "high": 20.0, "critical_low": 2.0, "critical_high": 100.0 }
     },
-    "aliases": ["urea nitrogen", "blood urea"]
+    "aliases": ["urea nitrogen", "blood urea", "blood urea nitrogen"]
   },
   "sodium": {
     "display_name": "Sodium",
@@ -106,7 +106,7 @@
     "ranges": {
       "default": { "low": 0.0, "high": 200.0, "critical_low": 0.0, "critical_high": 300.0 }
     },
-    "aliases": ["cholesterol", "total chol"]
+    "aliases": ["cholesterol", "total chol", "total cholesterol"]
   },
   "ldl": {
     "display_name": "LDL Cholesterol",
@@ -114,7 +114,7 @@
     "ranges": {
       "default": { "low": 0.0, "high": 100.0, "critical_low": 0.0, "critical_high": 190.0 }
     },
-    "aliases": ["ldl-c", "low density lipoprotein"]
+    "aliases": ["ldl-c", "ldl cholesterol", "ldl cholesterol direct", "low density lipoprotein", "low density lipoprotein cholesterol"]
   },
   "hdl": {
     "display_name": "HDL Cholesterol",
@@ -123,7 +123,7 @@
       "male":   { "low": 40.0, "high": 999.0, "critical_low": 20.0, "critical_high": 999.0 },
       "female": { "low": 50.0, "high": 999.0, "critical_low": 20.0, "critical_high": 999.0 }
     },
-    "aliases": ["hdl-c", "high density lipoprotein", "good cholesterol"]
+    "aliases": ["hdl-c", "hdl cholesterol", "high density lipoprotein", "high density lipoprotein cholesterol", "good cholesterol"]
   },
   "triglycerides": {
     "display_name": "Triglycerides",
@@ -173,7 +173,7 @@
     "ranges": {
       "default": { "low": 30.0, "high": 100.0, "critical_low": 10.0, "critical_high": 150.0 }
     },
-    "aliases": ["25-hydroxyvitamin d", "25-oh vitamin d", "vitamin d3"]
+    "aliases": ["25-hydroxyvitamin d", "25-oh vitamin d", "vitamin d3", "vitamin d"]
   },
   "vitamin_b12": {
     "display_name": "Vitamin B12",
