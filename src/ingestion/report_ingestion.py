@@ -10,6 +10,7 @@ Supported inputs:
 """
 from __future__ import annotations
 
+import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,7 +48,13 @@ class IngestionResult:
     def success(self) -> bool:
         return bool(self.full_text) and not self.errors
 
-
+def _light_clean(text: str) -> str:
+    """Clean control chars and blank lines but keep column spacing."""
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    text = re.sub(r"\r\n|\r", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+  
 # ─────────────────────────────────────────────
 # Ingestion engine
 # ─────────────────────────────────────────────
@@ -142,7 +149,7 @@ class ReportIngestion:
                 result.pages.append(
                     PageResult(
                         page_number=page_num,
-                        text=clean_text(text),
+                        text=_light_clean(text),
                         extraction_method="native",
                     )
                 )
@@ -153,7 +160,7 @@ class ReportIngestion:
                 result.pages.append(
                     PageResult(
                         page_number=page_num,
-                        text=clean_text(ocr_text),
+                        text=_light_clean(ocr_text),
                         extraction_method="ocr",
                     )
                 )
@@ -194,7 +201,7 @@ class ReportIngestion:
 
         text = pytesseract.image_to_string(img, lang=self.cfg.ocr.language)
         result.pages.append(
-            PageResult(page_number=1, text=clean_text(text), extraction_method="ocr")
+            PageResult(page_number=1, text=_light_clean(text), extraction_method="ocr")
         )
 
     # ── Image preprocessing ─────────────────
