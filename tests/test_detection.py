@@ -173,6 +173,12 @@ class TestReferenceRangeDB:
         assert r["critical_low"] is not None
         assert r["critical_high"] is not None
 
+    def test_lookup_full_lipid_names(self):
+        assert self.db.lookup("LDL Cholesterol")["key"] == "ldl"
+        assert self.db.lookup("HDL Cholesterol")["key"] == "hdl"
+        assert self.db.lookup("Total Cholesterol")["key"] == "total_cholesterol"
+        assert self.db.lookup("Vitamin D (25-OH)")["key"] == "vitamin_d"
+
 
 # ─────────────────────────────────────────────
 # AbnormalityDetector
