@@ -7,6 +7,7 @@ Also produces a structured findings report with clinical interpretation hints.
 """
 from __future__ import annotations
 
+import re
 import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -80,7 +81,10 @@ class DetectionReport:
             "summary": self.summary,
         }
 
-
+def _norm(name: str) -> str:
+    """Lowercase and collapse punctuation: 'LDL-C' / 'ldl_c' -> 'ldl c'."""
+    return re.sub(r"[^a-z0-9]+", " ", name.lower()).strip()
+    
 # ─────────────────────────────────────────────
 # Reference range loader
 # ─────────────────────────────────────────────
@@ -95,12 +99,30 @@ class ReferenceRangeDB:
         with open(path) as f:
             self._db: Dict = json.load(f)
 
-        # Build alias → canonical key index
+        # Build normalised alias -> canonical key index
         self._alias_index: Dict[str, str] = {}
         for key, entry in self._db.items():
-            self._alias_index[key.lower()] = key
+            self._alias_index[_norm(key)] = key
             for alias in entry.get("aliases", []):
-                self._alias_index[alias.lower()] = key
+                self._alias_index[_norm(alias)] = key
+
+    def _resolve(self, test_name: str) -> Optional[str]:
+        """Map a raw test name to a canonical DB key, or None."""
+        candidates = [
+            _norm(test_name),
+            _norm(re.sub(r"\(.*?\)", " ", test_name)),  # drop "(25-OH)", "(PCV)" etc.
+        ]
+        for c in candidates:
+            if c in self._alias_index:
+                return self._alias_index[c]
+
+        # Fuzzy fallback: long enough and a substantial substring match
+        for c in candidates:
+            if len(c) >= 5:
+                for alias, key in self._alias_index.items():
+                    if len(alias) >= 5 and c in alias and len(c) / len(alias) > 0.5:
+                        return key
+        return None
 
     def lookup(
         self, test_name: str, gender: str = "default", age: int = 30
@@ -109,27 +131,16 @@ class ReferenceRangeDB:
         Return reference range dict for a test name, or None if not found.
         gender: 'male' | 'female' | 'child' | 'default'
         """
-        canon = self._alias_index.get(test_name.lower().strip())
-        if canon is None:
-            # Fuzzy: require the query to be at least 5 chars AND a substring match
-            # in both directions to avoid spurious hits on short tokens like "xyz"
-            tl = test_name.lower().strip()
-            if len(tl) >= 5:
-                for alias, key in self._alias_index.items():
-                    if len(alias) >= 5 and (tl in alias and len(tl) / len(alias) > 0.5):
-                        canon = key
-                        break
-
+        canon = self._resolve(test_name)
         if canon is None:
             return None
 
         entry = self._db[canon]
         ranges = entry.get("ranges", {})
 
-        # Pick the most specific range tier
         gender_key = gender if gender in ranges else "default"
         if gender_key not in ranges:
-            gender_key = next(iter(ranges))  # fallback to first available
+            gender_key = next(iter(ranges))
 
         range_data = ranges[gender_key]
         return {
